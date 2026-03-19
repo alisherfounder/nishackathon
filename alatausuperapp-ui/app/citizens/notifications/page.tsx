@@ -54,6 +54,7 @@ export default function CitizensMessagesPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", description: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
 
   useEffect(() => {
     fetch(`${API}/notifications`)
@@ -78,6 +79,7 @@ export default function CitizensMessagesPage() {
     e.preventDefault();
     if (!form.title.trim()) return;
     setSubmitting(true);
+    setSubmitError(false);
     try {
       const res = await fetch(`${API}/reports`, {
         method: "POST",
@@ -88,9 +90,14 @@ export default function CitizensMessagesPage() {
         setForm({ title: "", description: "" });
         setShowForm(false);
         fetchReports();
+      } else {
+        setSubmitError(true);
       }
-    } catch { /* ignore */ }
-    finally { setSubmitting(false); }
+    } catch {
+      setSubmitError(true);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const alertTypes = ["all", ...Array.from(new Set(notifications.map((n) => n.type)))];
@@ -130,7 +137,7 @@ export default function CitizensMessagesPage() {
           </div>
 
           {alertsLoading ? (
-            <div className="flex items-center justify-center min-h-40"><p className="text-gray-400 text-sm">Loading alerts...</p></div>
+            <div className="flex items-center justify-center min-h-40"><p className="text-gray-400 text-sm">Loading alerts…</p></div>
           ) : filteredAlerts.length === 0 ? (
             <div className="rounded-2xl bg-white border border-gray-100 p-10 text-center shadow-sm">
               <p className="text-2xl mb-2">🔔</p>
@@ -194,22 +201,25 @@ export default function CitizensMessagesPage() {
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none"
               />
+              {submitError && (
+                <p className="text-xs text-red-500 text-center -mt-1">Failed to submit. Please try again.</p>
+              )}
               <div className="flex gap-2">
-                <button type="button" onClick={() => { setShowForm(false); setForm({ title: "", description: "" }); }}
+                <button type="button" onClick={() => { setShowForm(false); setForm({ title: "", description: "" }); setSubmitError(false); }}
                   className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50">
                   Cancel
                 </button>
                 <button type="submit" disabled={submitting}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
                   style={{ background: "linear-gradient(135deg, #1D4ED8, #3B82F6)" }}>
-                  {submitting ? "Submitting..." : "Submit"}
+                  {submitting ? "Submitting…" : "Submit"}
                 </button>
               </div>
             </form>
           )}
 
           {reportsLoading ? (
-            <div className="flex items-center justify-center min-h-40"><p className="text-gray-400 text-sm">Loading reports...</p></div>
+            <div className="flex items-center justify-center min-h-40"><p className="text-gray-400 text-sm">Loading reports…</p></div>
           ) : reports.length === 0 ? (
             <div className="rounded-2xl bg-white border border-gray-100 p-10 text-center shadow-sm">
               <p className="text-2xl mb-2">📋</p>

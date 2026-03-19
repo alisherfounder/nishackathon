@@ -13,13 +13,18 @@ const INITIAL_VIEW_STATE = {
   longitude: 77.05, latitude: 43.55, zoom: 10, pitch: 30, bearing: 0,
 };
 
-interface Project { id: string; title: string; institution: string; status: string; lat?: number; lon?: number; }
+interface Project { id: string; title: string; description?: string; institution: string; status: string; lat?: number; lon?: number; }
 interface NotificationItem { id: string; type: string; title: string; body?: string; lat?: number; lon?: number; geometry?: string; }
 interface RoadItem { id: string; title: string; path: [number, number][]; }
 interface ReportItem { id: string; title: string; description?: string; status: string; lat?: number; lon?: number; }
-interface TooltipData { x: number; y: number; title: string; subtitle: string; }
+interface TooltipData { x: number; y: number; label: string; title: string; description?: string; }
 
 // Keep in sync with government map
+function truncateWords(text: string, max = 10): string {
+  const words = text.trim().split(/\s+/);
+  return words.length <= max ? text : words.slice(0, max).join(" ") + "…";
+}
+
 const STATUS_FILL: Record<string, [number, number, number, number]> = {
   active:    [106, 148, 245, 220],
   planned:   [160, 196, 255, 200],
@@ -39,6 +44,7 @@ export default function CitizensMapClient() {
   const [reportForm, setReportForm] = useState({ title: "", description: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
   const [clickedCoords, setClickedCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [pickingMode, setPickingMode] = useState(false);
 
@@ -68,17 +74,18 @@ export default function CitizensMapClient() {
   const geoReports = reports.filter((r) => r.lat != null && r.lon != null);
 
   const layers = [
-    ...(roads.length > 0 ? [new PathLayer({ id: "roads", data: roads, getPath: (d: RoadItem) => d.path, getWidth: 5, getColor: [249, 115, 22, 200] as [number, number, number, number], widthMinPixels: 3, capRounded: true, jointRounded: true, pickable: true, onHover: ({ object, x, y }: { object?: RoadItem; x: number; y: number }) => { setTooltip(object ? { x, y, title: object.title, subtitle: "Road Work" } : null); } })] : []),
-    ...(geoProjects.length > 0 ? [new ScatterplotLayer({ id: "projects", data: geoProjects, getPosition: (d: Project) => [d.lon!, d.lat!], getRadius: 60, getFillColor: (d: Project) => STATUS_FILL[d.status] ?? STATUS_FILL.completed, getLineColor: [255, 255, 255, 100], lineWidthMinPixels: 1, stroked: true, pickable: true, radiusMinPixels: 6, radiusMaxPixels: 18, onHover: ({ object, x, y }: { object?: Project; x: number; y: number }) => { setTooltip(object ? { x, y, title: object.title, subtitle: `${object.institution} · ${object.status}` } : null); } })] : []),
-    ...(geoJams.length > 0 ? [new ScatterplotLayer({ id: "traffic", data: geoJams, getPosition: (d: NotificationItem) => [d.lon!, d.lat!], getRadius: 50, getFillColor: [245, 158, 11, 180] as [number, number, number, number], getLineColor: [245, 158, 11, 255] as [number, number, number, number], lineWidthMinPixels: 2, stroked: true, pickable: true, radiusMinPixels: 5, radiusMaxPixels: 14, onHover: ({ object, x, y }: { object?: NotificationItem; x: number; y: number }) => { setTooltip(object ? { x, y, title: object.title, subtitle: "Traffic Jam" } : null); } })] : []),
-    ...(geoDangers.length > 0 ? [new ScatterplotLayer({ id: "danger", data: geoDangers, getPosition: (d: NotificationItem) => [d.lon!, d.lat!], getRadius: 70, getFillColor: [239, 68, 68, 180] as [number, number, number, number], getLineColor: [239, 68, 68, 255] as [number, number, number, number], lineWidthMinPixels: 2, stroked: true, pickable: true, radiusMinPixels: 7, radiusMaxPixels: 18, onHover: ({ object, x, y }: { object?: NotificationItem; x: number; y: number }) => { setTooltip(object ? { x, y, title: object.title, subtitle: "Danger Zone" } : null); } })] : []),
-    ...(geoReports.length > 0 ? [new ScatterplotLayer({ id: "reports", data: geoReports, getPosition: (d: ReportItem) => [d.lon!, d.lat!], getRadius: 55, getFillColor: [147, 51, 234, 200] as [number, number, number, number], getLineColor: [147, 51, 234, 255] as [number, number, number, number], lineWidthMinPixels: 2, stroked: true, pickable: true, radiusMinPixels: 6, radiusMaxPixels: 16, onHover: ({ object, x, y }: { object?: ReportItem; x: number; y: number }) => { setTooltip(object ? { x, y, title: object.title, subtitle: `Report · ${object.status}` } : null); } })] : []),
+    ...(roads.length > 0 ? [new PathLayer({ id: "roads", data: roads, getPath: (d: RoadItem) => d.path, getWidth: 5, getColor: [249, 115, 22, 200] as [number, number, number, number], widthMinPixels: 3, capRounded: true, jointRounded: true, pickable: true, onHover: ({ object, x, y }: { object?: RoadItem; x: number; y: number }) => { setTooltip(object ? { x, y, label: "Road Work", title: object.title } : null); } })] : []),
+    ...(geoProjects.length > 0 ? [new ScatterplotLayer({ id: "projects", data: geoProjects, getPosition: (d: Project) => [d.lon!, d.lat!], getRadius: 60, getFillColor: (d: Project) => STATUS_FILL[d.status] ?? STATUS_FILL.completed, getLineColor: [255, 255, 255, 100], lineWidthMinPixels: 1, stroked: true, pickable: true, radiusMinPixels: 6, radiusMaxPixels: 18, onHover: ({ object, x, y }: { object?: Project; x: number; y: number }) => { setTooltip(object ? { x, y, label: `${object.institution} · ${object.status}`, title: object.title, description: object.description ? truncateWords(object.description) : undefined } : null); } })] : []),
+    ...(geoJams.length > 0 ? [new ScatterplotLayer({ id: "traffic", data: geoJams, getPosition: (d: NotificationItem) => [d.lon!, d.lat!], getRadius: 50, getFillColor: [245, 158, 11, 180] as [number, number, number, number], getLineColor: [245, 158, 11, 255] as [number, number, number, number], lineWidthMinPixels: 2, stroked: true, pickable: true, radiusMinPixels: 5, radiusMaxPixels: 14, onHover: ({ object, x, y }: { object?: NotificationItem; x: number; y: number }) => { setTooltip(object ? { x, y, label: "Traffic Jam", title: object.title, description: object.body ? truncateWords(object.body) : undefined } : null); } })] : []),
+    ...(geoDangers.length > 0 ? [new ScatterplotLayer({ id: "danger", data: geoDangers, getPosition: (d: NotificationItem) => [d.lon!, d.lat!], getRadius: 70, getFillColor: [239, 68, 68, 180] as [number, number, number, number], getLineColor: [239, 68, 68, 255] as [number, number, number, number], lineWidthMinPixels: 2, stroked: true, pickable: true, radiusMinPixels: 7, radiusMaxPixels: 18, onHover: ({ object, x, y }: { object?: NotificationItem; x: number; y: number }) => { setTooltip(object ? { x, y, label: "Danger Zone", title: object.title, description: object.body ? truncateWords(object.body) : undefined } : null); } })] : []),
+    ...(geoReports.length > 0 ? [new ScatterplotLayer({ id: "reports", data: geoReports, getPosition: (d: ReportItem) => [d.lon!, d.lat!], getRadius: 55, getFillColor: [147, 51, 234, 200] as [number, number, number, number], getLineColor: [147, 51, 234, 255] as [number, number, number, number], lineWidthMinPixels: 2, stroked: true, pickable: true, radiusMinPixels: 6, radiusMaxPixels: 16, onHover: ({ object, x, y }: { object?: ReportItem; x: number; y: number }) => { setTooltip(object ? { x, y, label: `Report · ${object.status}`, title: object.title, description: object.description ? truncateWords(object.description) : undefined } : null); } })] : []),
   ];
 
   async function handleReportSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!reportForm.title.trim() || !clickedCoords) return;
     setSubmitting(true);
+    setSubmitError(false);
     try {
       const res = await fetch(`${API}/reports`, {
         method: "POST",
@@ -100,9 +107,14 @@ export default function CitizensMapClient() {
           setClickedCoords(null);
           setPickingMode(false);
         }, 1500);
+      } else {
+        setSubmitError(true);
       }
-    } catch { /* ignore */ }
-    finally { setSubmitting(false); }
+    } catch {
+      setSubmitError(true);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -156,9 +168,10 @@ export default function CitizensMapClient() {
       )}
 
       {tooltip && (
-        <div className="absolute z-20 bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-lg pointer-events-none" style={{ left: tooltip.x + 12, top: tooltip.y - 12 }}>
-          <p className="text-gray-900 text-sm font-medium">{tooltip.title}</p>
-          <p className="text-gray-400 text-xs mt-0.5">{tooltip.subtitle}</p>
+        <div className="absolute z-20 bg-white border border-gray-200 rounded-xl px-3 py-2.5 shadow-lg pointer-events-none max-w-xs" style={{ left: tooltip.x + 12, top: tooltip.y - 12 }}>
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{tooltip.label}</p>
+          <p className="text-sm font-semibold text-gray-900 mt-0.5">{tooltip.title}</p>
+          {tooltip.description && <p className="text-xs text-gray-500 mt-1 leading-snug">{tooltip.description}</p>}
         </div>
       )}
 
@@ -222,13 +235,16 @@ export default function CitizensMapClient() {
                   onChange={(e) => setReportForm((f) => ({ ...f, description: e.target.value }))}
                   className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none"
                 />
+                {submitError && (
+                  <p className="text-xs text-red-500 text-center -mt-1">Failed to submit. Please try again.</p>
+                )}
                 <button
                   type="submit"
                   disabled={submitting}
                   className="w-full py-3 rounded-2xl text-sm font-semibold text-white disabled:opacity-60"
                   style={{ background: "linear-gradient(135deg, #1D4ED8, #3B82F6)" }}
                 >
-                  {submitting ? "Submitting..." : "Submit Report"}
+                  {submitting ? "Submitting…" : "Submit Report"}
                 </button>
               </form>
             )}

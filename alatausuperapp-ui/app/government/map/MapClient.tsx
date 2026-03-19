@@ -15,10 +15,15 @@ const INITIAL_VIEW_STATE = {
   longitude: 77.05, latitude: 43.55, zoom: 9.5, pitch: 45, bearing: -15,
 };
 
-interface Project { id: string; title: string; institution: string; status: string; lat?: number; lon?: number; }
+interface Project { id: string; title: string; description?: string; institution: string; status: string; lat?: number; lon?: number; }
 interface NotificationItem { id: string; type: string; title: string; body?: string; lat?: number; lon?: number; geometry?: string; }
 interface RoadItem { id: string; title: string; path: [number, number][]; }
 interface ReportItem { id: string; title: string; description?: string; status: string; lat?: number; lon?: number; }
+
+function truncateWords(text: string, max = 10): string {
+  const words = text.trim().split(/\s+/);
+  return words.length <= max ? text : words.slice(0, max).join(" ") + "…";
+}
 
 const STATUS_FILL: Record<string, [number, number, number, number]> = {
   active: [106, 148, 245, 220],
@@ -141,19 +146,19 @@ export default function GovernmentMapClient() {
   const layers = [];
 
   if (activeLayers.roads && roads.length > 0) {
-    layers.push(new PathLayer({ id: "roads-path", data: roads, getPath: (d: RoadItem) => d.path, getWidth: 6, getColor: [249, 115, 22, 220] as [number, number, number, number], widthMinPixels: 4, widthMaxPixels: 12, capRounded: true, jointRounded: true, pickable: true, onHover: ({ object, x, y }: { object?: RoadItem; x: number; y: number }) => { setTooltip(object ? { x, y, text: `Road Work: ${object.title}` } : null); }, onClick: ({ object }: { object?: RoadItem }) => { if (object) handleDeleteNotification({ id: object.id, type: "ROAD", title: object.title }, "road"); } }));
+    layers.push(new PathLayer({ id: "roads-path", data: roads, getPath: (d: RoadItem) => d.path, getWidth: 6, getColor: [249, 115, 22, 220] as [number, number, number, number], widthMinPixels: 4, widthMaxPixels: 12, capRounded: true, jointRounded: true, pickable: true, onHover: ({ object, x, y }: { object?: RoadItem; x: number; y: number }) => { setTooltip(object ? { x, y, text: `Road Work\n${object.title}` } : null); }, onClick: ({ object }: { object?: RoadItem }) => { if (object) handleDeleteNotification({ id: object.id, type: "ROAD", title: object.title }, "road"); } }));
   }
   if (activeLayers.projects && geoProjects.length > 0) {
-    layers.push(new ScatterplotLayer({ id: "projects-scatter", data: geoProjects, getPosition: (d: Project) => [d.lon!, d.lat!], getRadius: 60, getFillColor: (d: Project) => STATUS_FILL[d.status] ?? STATUS_FILL.completed, getLineColor: [255, 255, 255, 80], lineWidthMinPixels: 1, stroked: true, pickable: true, radiusMinPixels: 6, radiusMaxPixels: 20, onHover: ({ object, x, y }: { object?: Project; x: number; y: number }) => { setTooltip(object ? { x, y, text: `${object.title}\n${object.institution} · ${object.status}` } : null); }, onClick: ({ object }: { object?: Project }) => { if (object) handleDeleteProject(object); } }));
+    layers.push(new ScatterplotLayer({ id: "projects-scatter", data: geoProjects, getPosition: (d: Project) => [d.lon!, d.lat!], getRadius: 60, getFillColor: (d: Project) => STATUS_FILL[d.status] ?? STATUS_FILL.completed, getLineColor: [255, 255, 255, 80], lineWidthMinPixels: 1, stroked: true, pickable: true, radiusMinPixels: 6, radiusMaxPixels: 20, onHover: ({ object, x, y }: { object?: Project; x: number; y: number }) => { setTooltip(object ? { x, y, text: [`${object.institution} · ${object.status}`, object.title, object.description ? truncateWords(object.description) : undefined].filter(Boolean).join("\n") } : null); }, onClick: ({ object }: { object?: Project }) => { if (object) handleDeleteProject(object); } }));
   }
   if (activeLayers.traffic && geoJams.length > 0) {
-    layers.push(new ScatterplotLayer({ id: "traffic-scatter", data: geoJams, getPosition: (d: NotificationItem) => [d.lon!, d.lat!], getRadius: 50, getFillColor: [245, 158, 11, 180] as [number, number, number, number], getLineColor: [245, 158, 11, 255] as [number, number, number, number], lineWidthMinPixels: 2, stroked: true, pickable: true, radiusMinPixels: 5, radiusMaxPixels: 14, onHover: ({ object, x, y }: { object?: NotificationItem; x: number; y: number }) => { setTooltip(object ? { x, y, text: `Traffic: ${object.title}` } : null); }, onClick: ({ object }: { object?: NotificationItem }) => { if (object) handleDeleteNotification(object, "traffic"); } }));
+    layers.push(new ScatterplotLayer({ id: "traffic-scatter", data: geoJams, getPosition: (d: NotificationItem) => [d.lon!, d.lat!], getRadius: 50, getFillColor: [245, 158, 11, 180] as [number, number, number, number], getLineColor: [245, 158, 11, 255] as [number, number, number, number], lineWidthMinPixels: 2, stroked: true, pickable: true, radiusMinPixels: 5, radiusMaxPixels: 14, onHover: ({ object, x, y }: { object?: NotificationItem; x: number; y: number }) => { setTooltip(object ? { x, y, text: ["Traffic Jam", object.title, object.body ? truncateWords(object.body) : undefined].filter(Boolean).join("\n") } : null); }, onClick: ({ object }: { object?: NotificationItem }) => { if (object) handleDeleteNotification(object, "traffic"); } }));
   }
   if (activeLayers.danger && geoDangers.length > 0) {
-    layers.push(new ScatterplotLayer({ id: "danger-scatter", data: geoDangers, getPosition: (d: NotificationItem) => [d.lon!, d.lat!], getRadius: 70, getFillColor: [239, 68, 68, 180] as [number, number, number, number], getLineColor: [239, 68, 68, 255] as [number, number, number, number], lineWidthMinPixels: 2, stroked: true, pickable: true, radiusMinPixels: 7, radiusMaxPixels: 18, onHover: ({ object, x, y }: { object?: NotificationItem; x: number; y: number }) => { setTooltip(object ? { x, y, text: `Danger: ${object.title}` } : null); }, onClick: ({ object }: { object?: NotificationItem }) => { if (object) handleDeleteNotification(object, "danger"); } }));
+    layers.push(new ScatterplotLayer({ id: "danger-scatter", data: geoDangers, getPosition: (d: NotificationItem) => [d.lon!, d.lat!], getRadius: 70, getFillColor: [239, 68, 68, 180] as [number, number, number, number], getLineColor: [239, 68, 68, 255] as [number, number, number, number], lineWidthMinPixels: 2, stroked: true, pickable: true, radiusMinPixels: 7, radiusMaxPixels: 18, onHover: ({ object, x, y }: { object?: NotificationItem; x: number; y: number }) => { setTooltip(object ? { x, y, text: ["Danger Zone", object.title, object.body ? truncateWords(object.body) : undefined].filter(Boolean).join("\n") } : null); }, onClick: ({ object }: { object?: NotificationItem }) => { if (object) handleDeleteNotification(object, "danger"); } }));
   }
   if (activeLayers.reports && geoReports.length > 0) {
-    layers.push(new ScatterplotLayer({ id: "reports-scatter", data: geoReports, getPosition: (d: ReportItem) => [d.lon!, d.lat!], getRadius: 55, getFillColor: [147, 51, 234, 200] as [number, number, number, number], getLineColor: [147, 51, 234, 255] as [number, number, number, number], lineWidthMinPixels: 2, stroked: true, pickable: true, radiusMinPixels: 6, radiusMaxPixels: 16, onHover: ({ object, x, y }: { object?: ReportItem; x: number; y: number }) => { setTooltip(object ? { x, y, text: `Report: ${object.title}\nStatus: ${object.status}` } : null); } }));
+    layers.push(new ScatterplotLayer({ id: "reports-scatter", data: geoReports, getPosition: (d: ReportItem) => [d.lon!, d.lat!], getRadius: 55, getFillColor: [147, 51, 234, 200] as [number, number, number, number], getLineColor: [147, 51, 234, 255] as [number, number, number, number], lineWidthMinPixels: 2, stroked: true, pickable: true, radiusMinPixels: 6, radiusMaxPixels: 16, onHover: ({ object, x, y }: { object?: ReportItem; x: number; y: number }) => { setTooltip(object ? { x, y, text: [`Citizen Report · ${object.status}`, object.title, object.description ? truncateWords(object.description) : undefined].filter(Boolean).join("\n") } : null); } }));
   }
   if (clickedPoint && eventType === "ROAD" && roadPath.length >= 2) {
     layers.push(new PathLayer({ id: "road-preview", data: [{ path: roadPath }], getPath: (d: { path: [number, number][] }) => d.path, getWidth: 6, getColor: [249, 115, 22, 255] as [number, number, number, number], widthMinPixels: 4, capRounded: true, jointRounded: true, getDashArray: [6, 4], dashJustified: true, extensions: [] }));
@@ -272,9 +277,13 @@ export default function GovernmentMapClient() {
 
       {/* Tooltip */}
       {tooltip && !clickedPoint && (
-        <div className="absolute z-20 bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-lg pointer-events-none" style={{ left: tooltip.x + 12, top: tooltip.y - 12 }}>
+        <div className="absolute z-20 bg-white border border-gray-200 rounded-xl px-3 py-2.5 shadow-lg pointer-events-none max-w-xs" style={{ left: tooltip.x + 12, top: tooltip.y - 12 }}>
           {tooltip.text.split("\n").map((line, i) => (
-            <p key={i} className={i === 0 ? "text-gray-900 text-sm font-medium" : "text-gray-400 text-xs mt-0.5"}>{line}</p>
+            <p key={i} className={
+              i === 0 ? "text-[10px] font-semibold text-gray-400 uppercase tracking-wide" :
+              i === 1 ? "text-sm font-semibold text-gray-900 mt-0.5" :
+                        "text-xs text-gray-500 mt-1 leading-snug"
+            }>{line}</p>
           ))}
         </div>
       )}
