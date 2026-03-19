@@ -16,11 +16,16 @@ function LeafIcon({ active }: { active: boolean }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 2} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z" /><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" /></svg>;
 }
 
+function ClipboardIcon({ active }: { active: boolean }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 2} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" ry="1" /><line x1="9" y1="12" x2="15" y2="12" /><line x1="9" y1="16" x2="13" y2="16" /></svg>;
+}
+
 const NAV = [
   { href: "/citizens/map", label: "Map", Icon: MapIcon },
   { href: "/citizens/notifications", label: "Alerts", Icon: BellIcon },
-  { href: "/citizens/ai", label: "AI Assistant", Icon: BotIcon },
-  { href: "/citizens/overview", label: "Air Quality", Icon: LeafIcon },
+  { href: "/citizens/requests", label: "Requests", Icon: ClipboardIcon },
+  { href: "/citizens/ai", label: "AI", Icon: BotIcon },
+  { href: "/citizens/overview", label: "Air", Icon: LeafIcon },
 ];
 
 export default function CitizensLayout({ children }: { children: React.ReactNode }) {

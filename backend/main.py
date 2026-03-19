@@ -11,7 +11,8 @@ from models.project import ProjectCard
 from models.notification import Notification
 from models.sensor import Sensor
 from models.poll import Poll, PollOption
-from routers import projects, notifications, sensors, polls
+from models.request import Request
+from routers import projects, notifications, sensors, polls, requests
 
 
 def _seed_if_empty():
@@ -77,6 +78,7 @@ app.include_router(projects.router, prefix="/projects", tags=["Projects"])
 app.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 app.include_router(sensors.router, prefix="/sensors", tags=["Sensors"])
 app.include_router(polls.router, prefix="/polls", tags=["Polls"])
+app.include_router(requests.router, prefix="/requests", tags=["Requests"])
 
 
 @app.get("/")

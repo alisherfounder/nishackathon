@@ -43,6 +43,25 @@ function VoteIcon({ className }: { className?: string }) {
   );
 }
 
+function FolderIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function ClipboardIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+      <line x1="9" y1="12" x2="15" y2="12" />
+      <line x1="9" y1="16" x2="13" y2="16" />
+    </svg>
+  );
+}
+
 function SettingsIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -75,11 +94,13 @@ function BuildingIcon() {
 }
 
 const NAV_ITEMS = [
-  { href: "/government", label: "Home", Icon: HomeIcon, badgeKey: null },
-  { href: "/government/map", label: "Map", Icon: MapIcon, badgeKey: null },
-  { href: "/government/notifications", label: "Notifications", Icon: BellIcon, badgeKey: "notif" },
-  { href: "/government/polls", label: "Voting", Icon: VoteIcon, badgeKey: "polls" },
-  { href: "/government/projects", label: "Projects", Icon: SettingsIcon, badgeKey: null },
+  { href: "/government",               label: "Home",          Icon: HomeIcon,      badgeKey: null       },
+  { href: "/government/projects",      label: "Projects",      Icon: FolderIcon,    badgeKey: null       },
+  { href: "/government/map",           label: "Map",           Icon: MapIcon,       badgeKey: null       },
+  { href: "/government/requests",      label: "Requests",      Icon: ClipboardIcon, badgeKey: "requests" },
+  { href: "/government/notifications", label: "Notifications", Icon: BellIcon,      badgeKey: "notif"    },
+  { href: "/government/polls",         label: "Voting",        Icon: VoteIcon,      badgeKey: "polls"    },
+  { href: "/government/settings",      label: "Settings",      Icon: SettingsIcon,  badgeKey: null       },
 ];
 
 export default function Sidebar() {
@@ -87,11 +108,14 @@ export default function Sidebar() {
   const [notifCount, setNotifCount] = useState(0);
   const [pollCount, setPollCount] = useState(0);
 
+  const [requestCount, setRequestCount] = useState(0);
+
   useEffect(() => {
     Promise.allSettled([
       fetch(`${API}/notifications`),
       fetch(`${API}/polls`),
-    ]).then(([notifRes, pollsRes]) => {
+      fetch(`${API}/requests?status=pending`),
+    ]).then(([notifRes, pollsRes, reqRes]) => {
       if (notifRes.status === "fulfilled" && notifRes.value.ok) {
         notifRes.value.json().then((data: unknown[]) => setNotifCount(data.length));
       }
@@ -100,10 +124,13 @@ export default function Sidebar() {
           setPollCount(data.filter((p) => p.is_active).length)
         );
       }
+      if (reqRes.status === "fulfilled" && reqRes.value.ok) {
+        reqRes.value.json().then((data: unknown[]) => setRequestCount(data.length));
+      }
     });
   }, []);
 
-  const badges: Record<string, number> = { notif: notifCount, polls: pollCount };
+  const badges: Record<string, number> = { notif: notifCount, polls: pollCount, requests: requestCount };
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 z-40 flex w-64 flex-col bg-white border-r border-gray-100">
@@ -181,7 +208,7 @@ export default function Sidebar() {
             <p className="text-sm font-semibold text-gray-900 leading-tight">Administrator</p>
             <p className="text-xs text-gray-400 leading-tight truncate">Developer · Akim</p>
           </div>
-          <SettingsIcon className="w-4 h-4 text-gray-400 shrink-0" />
+          <Link href="/government/settings"><SettingsIcon className="w-4 h-4 text-gray-400 hover:text-gray-600 shrink-0 transition-colors" /></Link>
         </div>
       </div>
     </aside>

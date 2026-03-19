@@ -5,9 +5,11 @@ import { usePathname } from "next/navigation";
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/government": { title: "Home", subtitle: "Alatau, Kazakhstan" },
   "/government/map": { title: "Map", subtitle: "Alatau, Kazakhstan" },
+  "/government/requests": { title: "Requests", subtitle: "Citizen & business submissions" },
   "/government/notifications": { title: "Notifications", subtitle: "Alerts & updates" },
   "/government/polls": { title: "Voting", subtitle: "Community polls" },
   "/government/projects": { title: "Projects", subtitle: "Infrastructure projects" },
+  "/government/settings": { title: "Settings", subtitle: "Account management" },
 };
 
 function GovernmentIcon() {

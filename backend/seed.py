@@ -11,6 +11,7 @@ from models.project import ProjectCard
 from models.notification import Notification
 from models.sensor import Sensor
 from models.poll import Poll, PollOption
+from models.request import Request
 
 
 def seed():
@@ -307,14 +308,59 @@ def seed():
             poll.options.append(PollOption(id=str(uuid.uuid4()), text=text, votes=vote_count))
         polls.append(poll)
 
+    # ---- Requests ----
+    requests_data = [
+        Request(id=str(uuid.uuid4()), requester_type="business", identifier="180340021791",
+                request_type="apartment_building", status="under_review",
+                address="Gate District, Plot 14, Alatau City",
+                description="24-floor residential complex with 320 apartments, underground parking, and ground-floor retail. Expected construction start Q3 2025.",
+                created_at=now - timedelta(days=5)),
+        Request(id=str(uuid.uuid4()), requester_type="individual", identifier="920814350178",
+                request_type="non_commercial_building", status="pending",
+                address="ul. Alatau 47, Golden District",
+                description="Approval requested for construction of a private single-storey residential house (100 m²) on personally owned land.",
+                created_at=now - timedelta(days=3)),
+        Request(id=str(uuid.uuid4()), requester_type="business", identifier="050731400122",
+                request_type="shopping_center", status="pending",
+                address="Growing District, Commercial Zone B, Alatau City",
+                description="4-storey shopping and entertainment center (GLA 18,000 m²) with food court, cinema, and rooftop garden.",
+                created_at=now - timedelta(days=2)),
+        Request(id=str(uuid.uuid4()), requester_type="individual", identifier="870322450099",
+                request_type="document_retrieval", status="approved",
+                address="Gate District, Office 301, Alatau City",
+                description="Request for certified copy of land title certificate for property registered under applicant's name.",
+                created_at=now - timedelta(days=10)),
+        Request(id=str(uuid.uuid4()), requester_type="business", identifier="110945003217",
+                request_type="hotel", status="approved",
+                address="Green District, Kapchagay Lakefront, Plot 7",
+                description="5-star lakefront hotel (200 rooms) with conference center, spa, and marina. Integrated with adjacent resort complex.",
+                created_at=now - timedelta(days=15)),
+        Request(id=str(uuid.uuid4()), requester_type="individual", identifier="940607301254",
+                request_type="fence_garage_permit", status="pending",
+                address="ul. Ile 12, Growing District",
+                description="Construction of a metal fence (perimeter 80m, height 1.8m) and attached garage (36 m²) on private residential land.",
+                created_at=now - timedelta(days=1)),
+        Request(id=str(uuid.uuid4()), requester_type="business", identifier="200812567034",
+                request_type="restaurant_cafe", status="rejected",
+                address="Gate District, Ground Floor, Block A3",
+                description="Opening of a 120-seat restaurant with outdoor terrace. Application rejected due to insufficient fire safety documentation.",
+                created_at=now - timedelta(days=20)),
+        Request(id=str(uuid.uuid4()), requester_type="individual", identifier="010214400873",
+                request_type="utility_connection", status="under_review",
+                address="Golden District, Building 5, Flat 14",
+                description="Request for new gas connection to newly completed residential unit. Meter installation and pipeline extension required.",
+                created_at=now - timedelta(hours=12)),
+    ]
+
     db.add_all(projects)
     db.add_all(notifications)
     db.add_all(sensors)
     db.add_all(polls)
+    db.add_all(requests_data)
     db.commit()
     db.close()
 
-    print(f"Seeded {len(projects)} projects, {len(notifications)} notifications, {len(sensors)} sensors, {len(polls)} polls.")
+    print(f"Seeded {len(projects)} projects, {len(notifications)} notifications, {len(sensors)} sensors, {len(polls)} polls, {len(requests_data)} requests.")
 
 
 if __name__ == "__main__":
