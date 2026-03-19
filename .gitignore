@@ -1,0 +1,25 @@
+__pycache__
+*.pyc
+.env
+.env*
+*.db
+venv/
+.venv/
+
+# Node / Next.js (alatausuperapp-ui)
+node_modules/
+.pnp
+.pnp.*
+.next/
+out/
+build/
+coverage/
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+*.pem
