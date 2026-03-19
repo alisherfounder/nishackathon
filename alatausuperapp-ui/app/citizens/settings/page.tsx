@@ -30,7 +30,7 @@ export default function CitizensSettingsPage() {
       {/* Profile card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white text-xl font-bold"
-          style={{ background: "linear-gradient(135deg, #0D9488, #14B8A6)" }}>
+          style={{ background: "linear-gradient(135deg, #1D4ED8, #3B82F6)" }}>
           C
         </div>
         <div>
@@ -45,10 +45,10 @@ export default function CitizensSettingsPage() {
         <div className="flex flex-col gap-2">
           {LANGS.map((l) => (
             <button key={l} onClick={() => setLang(l)}
-              className={`flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-colors ${lang === l ? "border-teal-400 bg-teal-50 text-teal-700" : "border-gray-100 bg-gray-50 text-gray-600 hover:border-gray-200"}`}>
+              className={`flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-colors ${lang === l ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-100 bg-gray-50 text-gray-600 hover:border-gray-200"}`}>
               {l}
               {lang === l && (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-teal-500">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-blue-500">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               )}
@@ -68,7 +68,7 @@ export default function CitizensSettingsPage() {
                 <p className="text-xs text-gray-400">{sub}</p>
               </div>
               <button onClick={() => toggleNotif(key)}
-                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${notifs[key] ? "bg-teal-500" : "bg-gray-200"}`}>
+                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${notifs[key] ? "bg-blue-500" : "bg-gray-200"}`}>
                 <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform mt-0.5 ${notifs[key] ? "translate-x-5.5" : "translate-x-0.5"}`} />
               </button>
             </div>

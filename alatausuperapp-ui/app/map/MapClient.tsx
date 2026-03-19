@@ -8,7 +8,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useToast } from "../components/Toast";
 import { useConfirm } from "../components/ConfirmDialog";
 
-const API = "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API ?? "/api";
 const MAP_STYLE =
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 

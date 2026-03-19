@@ -23,7 +23,7 @@ function SettingsIcon({ active }: { active: boolean }) {
 
 const NAV = [
   { href: "/citizens/overview", label: "Overview", Icon: LeafIcon },
-  { href: "/citizens/notifications", label: "Alerts",    Icon: BellIcon     },
+  { href: "/citizens/notifications", label: "Messages",  Icon: BellIcon     },
   { href: "/citizens/map",           label: "Map",       Icon: MapIcon      },
   { href: "/citizens/qr",            label: "QR",        Icon: QrIcon       },
   { href: "/citizens/settings",      label: "Settings",  Icon: SettingsIcon },
@@ -37,7 +37,7 @@ export default function CitizensLayout({ children }: { children: React.ReactNode
       {/* Top bar */}
       <header className="sticky top-0 z-30 flex items-center justify-between bg-white border-b border-gray-100 px-5 py-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg text-white text-xs font-bold" style={{ background: "linear-gradient(135deg, #0D9488, #14B8A6)" }}>
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg text-white text-xs font-bold" style={{ background: "linear-gradient(135deg, #1D4ED8, #3B82F6)" }}>
             A
           </div>
           <div>
@@ -45,7 +45,7 @@ export default function CitizensLayout({ children }: { children: React.ReactNode
             <p className="text-[10px] text-gray-400 leading-tight">Citizens Portal</p>
           </div>
         </div>
-        <Link href="/" className="text-xs text-teal-500 font-medium hover:text-teal-600 transition-colors">← Switch portal</Link>
+        <Link href="/" className="text-xs text-blue-500 font-medium hover:text-blue-600 transition-colors">← Switch portal</Link>
       </header>
 
       {/* Content */}
@@ -56,7 +56,7 @@ export default function CitizensLayout({ children }: { children: React.ReactNode
         {NAV.map(({ href, label, Icon }) => {
           const active = pathname.startsWith(href);
           return (
-            <Link key={href} href={href} className={`flex flex-1 flex-col items-center justify-center gap-1 py-3 text-[11px] font-medium transition-colors ${active ? "text-teal-500" : "text-gray-400 hover:text-gray-600"}`}>
+            <Link key={href} href={href} className={`flex flex-1 flex-col items-center justify-center gap-1 py-3 text-[11px] font-medium transition-colors ${active ? "text-blue-500" : "text-gray-400 hover:text-gray-600"}`}>
               <Icon active={active} />
               {label}
             </Link>

@@ -5,7 +5,7 @@ import { useToast } from "../../components/Toast";
 import { useConfirm } from "../../components/ConfirmDialog";
 import TrashIcon from "../../components/TrashIcon";
 
-const API = "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API ?? "/api";
 
 interface Project {
   id: string;

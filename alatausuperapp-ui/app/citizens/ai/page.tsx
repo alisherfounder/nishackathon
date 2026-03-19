@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 
-const API = "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API ?? "/api";
 
 interface Message {
   role: "user" | "assistant";
@@ -64,7 +64,7 @@ export default function CitizensAIPage() {
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-100 bg-white">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full text-white" style={{ background: "linear-gradient(135deg, #0D9488, #14B8A6)" }}>
+          <div className="flex h-8 w-8 items-center justify-center rounded-full text-white" style={{ background: "linear-gradient(135deg, #1D4ED8, #3B82F6)" }}>
             <BotIcon />
           </div>
           <div>
@@ -78,7 +78,7 @@ export default function CitizensAIPage() {
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center flex-1 gap-5 py-8">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-white" style={{ background: "linear-gradient(135deg, #0D9488, #14B8A6)" }}>
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-white" style={{ background: "linear-gradient(135deg, #1D4ED8, #3B82F6)" }}>
               <BotIcon />
             </div>
             <div className="text-center">
@@ -98,11 +98,11 @@ export default function CitizensAIPage() {
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             {msg.role === "assistant" && (
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white mr-2 mt-0.5" style={{ background: "linear-gradient(135deg, #0D9488, #14B8A6)" }}>
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white mr-2 mt-0.5" style={{ background: "linear-gradient(135deg, #1D4ED8, #3B82F6)" }}>
                 <BotIcon />
               </div>
             )}
-            <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${msg.role === "user" ? "bg-teal-500 text-white rounded-br-md" : "bg-white border border-gray-200 text-gray-800 rounded-bl-md shadow-sm"}`}>
+            <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${msg.role === "user" ? "bg-blue-500 text-white rounded-br-md" : "bg-white border border-gray-200 text-gray-800 rounded-bl-md shadow-sm"}`}>
               {msg.content}
             </div>
           </div>
@@ -110,7 +110,7 @@ export default function CitizensAIPage() {
 
         {loading && (
           <div className="flex justify-start">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white mr-2" style={{ background: "linear-gradient(135deg, #0D9488, #14B8A6)" }}>
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white mr-2" style={{ background: "linear-gradient(135deg, #1D4ED8, #3B82F6)" }}>
               <BotIcon />
             </div>
             <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
@@ -134,14 +134,14 @@ export default function CitizensAIPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendMessage(input))}
             placeholder="Ask about city projects, alerts..."
-            className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400"
+            className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
             disabled={loading}
           />
           <button
             onClick={() => sendMessage(input)}
             disabled={!input.trim() || loading}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white transition-opacity disabled:opacity-40"
-            style={{ background: "linear-gradient(135deg, #0D9488, #14B8A6)" }}
+            style={{ background: "linear-gradient(135deg, #1D4ED8, #3B82F6)" }}
           >
             <SendIcon />
           </button>

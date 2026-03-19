@@ -8,7 +8,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useToast } from "../../components/Toast";
 import { useConfirm } from "../../components/ConfirmDialog";
 
-const API = "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API ?? "/api";
 const MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
 const INITIAL_VIEW_STATE = {
@@ -18,6 +18,7 @@ const INITIAL_VIEW_STATE = {
 interface Project { id: string; title: string; institution: string; status: string; lat?: number; lon?: number; }
 interface NotificationItem { id: string; type: string; title: string; body?: string; lat?: number; lon?: number; geometry?: string; }
 interface RoadItem { id: string; title: string; path: [number, number][]; }
+interface ReportItem { id: string; title: string; description?: string; status: string; lat?: number; lon?: number; }
 
 const STATUS_FILL: Record<string, [number, number, number, number]> = {
   active: [106, 148, 245, 220],
@@ -25,7 +26,7 @@ const STATUS_FILL: Record<string, [number, number, number, number]> = {
   completed: [113, 113, 122, 160],
 };
 
-type LayerKey = "projects" | "traffic" | "danger" | "roads";
+type LayerKey = "projects" | "traffic" | "danger" | "roads" | "reports";
 type EventType = "project" | "JAM" | "DANGER" | "ROAD";
 
 interface TooltipData { x: number; y: number; text: string; }
@@ -43,12 +44,13 @@ export default function GovernmentMapClient() {
   const [jams, setJams] = useState<NotificationItem[]>([]);
   const [dangers, setDangers] = useState<NotificationItem[]>([]);
   const [roads, setRoads] = useState<RoadItem[]>([]);
+  const [reports, setReports] = useState<ReportItem[]>([]);
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const { toast } = useToast();
   const { confirm } = useConfirm();
 
   const [activeLayers, setActiveLayers] = useState<Record<LayerKey, boolean>>({
-    projects: true, traffic: true, danger: true, roads: true,
+    projects: true, traffic: true, danger: true, roads: true, reports: true,
   });
 
   const [clickedPoint, setClickedPoint] = useState<ClickedPoint | null>(null);
@@ -62,11 +64,12 @@ export default function GovernmentMapClient() {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(async () => {
-    const [projRes, jamRes, dangerRes, roadRes] = await Promise.allSettled([
+    const [projRes, jamRes, dangerRes, roadRes, repRes] = await Promise.allSettled([
       fetch(`${API}/projects`),
       fetch(`${API}/notifications?type=JAM`),
       fetch(`${API}/notifications?type=DANGER`),
       fetch(`${API}/notifications?type=ROAD`),
+      fetch(`${API}/reports`),
     ]);
     if (projRes.status === "fulfilled" && projRes.value.ok) setProjects(await projRes.value.json());
     if (jamRes.status === "fulfilled" && jamRes.value.ok) setJams(await jamRes.value.json());
@@ -75,6 +78,7 @@ export default function GovernmentMapClient() {
       const rawRoads: NotificationItem[] = await roadRes.value.json();
       setRoads(rawRoads.filter((r) => r.geometry).map((r) => ({ id: r.id, title: r.title, path: JSON.parse(r.geometry!) as [number, number][] })));
     }
+    if (repRes.status === "fulfilled" && repRes.value.ok) setReports(await repRes.value.json());
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -132,6 +136,7 @@ export default function GovernmentMapClient() {
   const geoProjects = projects.filter((p) => p.lat != null && p.lon != null);
   const geoJams = jams.filter((j) => j.lat != null && j.lon != null);
   const geoDangers = dangers.filter((d) => d.lat != null && d.lon != null);
+  const geoReports = reports.filter((r) => r.lat != null && r.lon != null);
 
   const layers = [];
 
@@ -147,6 +152,9 @@ export default function GovernmentMapClient() {
   if (activeLayers.danger && geoDangers.length > 0) {
     layers.push(new ScatterplotLayer({ id: "danger-scatter", data: geoDangers, getPosition: (d: NotificationItem) => [d.lon!, d.lat!], getRadius: 70, getFillColor: [239, 68, 68, 180] as [number, number, number, number], getLineColor: [239, 68, 68, 255] as [number, number, number, number], lineWidthMinPixels: 2, stroked: true, pickable: true, radiusMinPixels: 7, radiusMaxPixels: 18, onHover: ({ object, x, y }: { object?: NotificationItem; x: number; y: number }) => { setTooltip(object ? { x, y, text: `Danger: ${object.title}` } : null); }, onClick: ({ object }: { object?: NotificationItem }) => { if (object) handleDeleteNotification(object, "danger"); } }));
   }
+  if (activeLayers.reports && geoReports.length > 0) {
+    layers.push(new ScatterplotLayer({ id: "reports-scatter", data: geoReports, getPosition: (d: ReportItem) => [d.lon!, d.lat!], getRadius: 55, getFillColor: [147, 51, 234, 200] as [number, number, number, number], getLineColor: [147, 51, 234, 255] as [number, number, number, number], lineWidthMinPixels: 2, stroked: true, pickable: true, radiusMinPixels: 6, radiusMaxPixels: 16, onHover: ({ object, x, y }: { object?: ReportItem; x: number; y: number }) => { setTooltip(object ? { x, y, text: `Report: ${object.title}\nStatus: ${object.status}` } : null); } }));
+  }
   if (clickedPoint && eventType === "ROAD" && roadPath.length >= 2) {
     layers.push(new PathLayer({ id: "road-preview", data: [{ path: roadPath }], getPath: (d: { path: [number, number][] }) => d.path, getWidth: 6, getColor: [249, 115, 22, 255] as [number, number, number, number], widthMinPixels: 4, capRounded: true, jointRounded: true, getDashArray: [6, 4], dashJustified: true, extensions: [] }));
   }
@@ -156,10 +164,11 @@ export default function GovernmentMapClient() {
   }
 
   const LAYER_OPTIONS: { key: LayerKey; label: string; color: string; count: number }[] = [
-    { key: "projects", label: "Projects", color: "bg-blue-500", count: geoProjects.length },
-    { key: "traffic", label: "Traffic Jams", color: "bg-amber-500", count: geoJams.length },
-    { key: "danger", label: "Danger Zones", color: "bg-red-500", count: geoDangers.length },
-    { key: "roads", label: "Road Works", color: "bg-orange-500", count: roads.length },
+    { key: "projects", label: "Projects",     color: "bg-blue-500",   count: geoProjects.length },
+    { key: "traffic",  label: "Traffic Jams", color: "bg-amber-500",  count: geoJams.length    },
+    { key: "danger",   label: "Danger Zones", color: "bg-red-500",    count: geoDangers.length  },
+    { key: "roads",    label: "Road Works",   color: "bg-orange-500", count: roads.length       },
+    { key: "reports",  label: "Reports",      color: "bg-purple-600", count: geoReports.length  },
   ];
 
   return (
@@ -250,11 +259,13 @@ export default function GovernmentMapClient() {
       <div className="absolute bottom-8 left-64 z-10 bg-white/95 backdrop-blur border border-gray-200 rounded-xl px-4 py-3 shadow-lg">
         <p className="text-gray-500 text-xs font-medium mb-2">LEGEND</p>
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-500" /><span className="text-gray-600 text-xs">Active Project</span></div>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-300" /><span className="text-gray-600 text-xs">Planned Project</span></div>
+          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full" style={{ background: "rgb(106,148,245)" }} /><span className="text-gray-600 text-xs">Active Project</span></div>
+          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full" style={{ background: "rgb(160,196,255)" }} /><span className="text-gray-600 text-xs">Planned Project</span></div>
+          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-gray-400" /><span className="text-gray-600 text-xs">Completed Project</span></div>
           <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-500" /><span className="text-gray-600 text-xs">Traffic Jam</span></div>
           <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500" /><span className="text-gray-600 text-xs">Danger Zone</span></div>
           <div className="flex items-center gap-2"><div className="w-5 h-1.5 rounded-full bg-orange-500" /><span className="text-gray-600 text-xs">Road Work</span></div>
+          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-purple-600" /><span className="text-gray-600 text-xs">Citizen Report</span></div>
         </div>
         <div className="mt-3 pt-2 border-t border-gray-100"><p className="text-gray-400 text-xs">Click feature to delete</p></div>
       </div>

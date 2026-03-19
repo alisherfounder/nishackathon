@@ -40,7 +40,7 @@ export default function CitizensQrPage() {
 
       <button
         className="w-full max-w-xs py-3 rounded-2xl text-sm font-semibold text-white"
-        style={{ background: "linear-gradient(135deg, #0D9488, #14B8A6)" }}
+        style={{ background: "linear-gradient(135deg, #1D4ED8, #3B82F6)" }}
       >
         Save to Gallery
       </button>

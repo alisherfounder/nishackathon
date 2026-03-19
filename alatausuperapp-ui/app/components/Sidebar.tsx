@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const API = "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API ?? "/api";
 
 function HomeIcon({ className }: { className?: string }) {
   return (
@@ -62,6 +62,16 @@ function ClipboardIcon({ className }: { className?: string }) {
   );
 }
 
+function AlertTriangleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  );
+}
+
 function SettingsIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -94,28 +104,30 @@ function BuildingIcon() {
 }
 
 const NAV_ITEMS = [
-  { href: "/government",               label: "Home",          Icon: HomeIcon,      badgeKey: null       },
-  { href: "/government/projects",      label: "Projects",      Icon: FolderIcon,    badgeKey: null       },
-  { href: "/government/map",           label: "Map",           Icon: MapIcon,       badgeKey: null       },
-  { href: "/government/requests",      label: "Requests",      Icon: ClipboardIcon, badgeKey: "requests" },
-  { href: "/government/notifications", label: "Notifications", Icon: BellIcon,      badgeKey: "notif"    },
-  { href: "/government/polls",         label: "Voting",        Icon: VoteIcon,      badgeKey: "polls"    },
-  { href: "/government/settings",      label: "Settings",      Icon: SettingsIcon,  badgeKey: null       },
+  { href: "/government",               label: "Home",          Icon: HomeIcon,           badgeKey: null       },
+  { href: "/government/projects",      label: "Projects",      Icon: FolderIcon,         badgeKey: null       },
+  { href: "/government/map",           label: "Map",           Icon: MapIcon,            badgeKey: null       },
+  { href: "/government/requests",      label: "Requests",      Icon: ClipboardIcon,      badgeKey: "requests" },
+  { href: "/government/reports",       label: "Reports",       Icon: AlertTriangleIcon,  badgeKey: "reports"  },
+  { href: "/government/notifications", label: "Notifications", Icon: BellIcon,           badgeKey: "notif"    },
+  { href: "/government/polls",         label: "Voting",        Icon: VoteIcon,           badgeKey: "polls"    },
+  { href: "/government/settings",      label: "Settings",      Icon: SettingsIcon,       badgeKey: null       },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [notifCount, setNotifCount] = useState(0);
   const [pollCount, setPollCount] = useState(0);
-
   const [requestCount, setRequestCount] = useState(0);
+  const [reportCount, setReportCount] = useState(0);
 
   useEffect(() => {
     Promise.allSettled([
       fetch(`${API}/notifications`),
       fetch(`${API}/polls`),
       fetch(`${API}/requests?status=pending`),
-    ]).then(([notifRes, pollsRes, reqRes]) => {
+      fetch(`${API}/reports?status=open`),
+    ]).then(([notifRes, pollsRes, reqRes, repRes]) => {
       if (notifRes.status === "fulfilled" && notifRes.value.ok) {
         notifRes.value.json().then((data: unknown[]) => setNotifCount(data.length));
       }
@@ -127,10 +139,13 @@ export default function Sidebar() {
       if (reqRes.status === "fulfilled" && reqRes.value.ok) {
         reqRes.value.json().then((data: unknown[]) => setRequestCount(data.length));
       }
+      if (repRes.status === "fulfilled" && repRes.value.ok) {
+        repRes.value.json().then((data: unknown[]) => setReportCount(data.length));
+      }
     });
   }, []);
 
-  const badges: Record<string, number> = { notif: notifCount, polls: pollCount, requests: requestCount };
+  const badges: Record<string, number> = { notif: notifCount, polls: pollCount, requests: requestCount, reports: reportCount };
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 z-40 flex w-64 flex-col bg-white border-r border-gray-100">

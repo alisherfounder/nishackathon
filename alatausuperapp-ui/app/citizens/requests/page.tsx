@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const API = "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API ?? "/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,7 +48,7 @@ const STATUS_CFG: Record<string, { label: string; bg: string; text: string; dot:
   changes_requested: { label: "Changes Requested", bg: "bg-orange-50", text: "text-orange-700", dot: "bg-orange-400" },
 };
 
-const INPUT = "w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400";
+const INPUT = "w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -129,7 +129,7 @@ export default function CitizensRequestsPage() {
     <div className="max-w-lg mx-auto">
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-16 left-1/2 -translate-x-1/2 z-50 rounded-2xl px-5 py-3 text-sm font-medium text-white shadow-lg transition-all ${toast.ok ? "bg-teal-500" : "bg-red-500"}`}>
+        <div className={`fixed top-16 left-1/2 -translate-x-1/2 z-50 rounded-2xl px-5 py-3 text-sm font-medium text-white shadow-lg transition-all ${toast.ok ? "bg-blue-500" : "bg-red-500"}`}>
           {toast.msg}
         </div>
       )}
@@ -137,11 +137,11 @@ export default function CitizensRequestsPage() {
       {/* Tab bar */}
       <div className="sticky top-[57px] z-20 bg-gray-50 border-b border-gray-100 flex">
         <button onClick={() => setTab("my")}
-          className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 ${tab === "my" ? "border-teal-500 text-teal-600" : "border-transparent text-gray-400 hover:text-gray-600"}`}>
+          className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 ${tab === "my" ? "border-blue-500 text-blue-600" : "border-transparent text-gray-400 hover:text-gray-600"}`}>
           My Requests
         </button>
         <button onClick={() => setTab("new")}
-          className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 ${tab === "new" ? "border-teal-500 text-teal-600" : "border-transparent text-gray-400 hover:text-gray-600"}`}>
+          className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 ${tab === "new" ? "border-blue-500 text-blue-600" : "border-transparent text-gray-400 hover:text-gray-600"}`}>
           + New Request
         </button>
       </div>
@@ -164,7 +164,7 @@ export default function CitizensRequestsPage() {
           ) : displayed.length === 0 ? (
             <div className="rounded-2xl bg-white border border-gray-100 p-10 text-center shadow-sm">
               <p className="text-gray-400 text-sm">{searchId.length >= 4 ? "No requests found for this identifier." : "No requests yet."}</p>
-              <button onClick={() => setTab("new")} className="mt-3 text-sm font-medium text-teal-500 hover:text-teal-600">Submit a request →</button>
+              <button onClick={() => setTab("new")} className="mt-3 text-sm font-medium text-blue-500 hover:text-blue-600">Submit a request →</button>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
@@ -226,8 +226,8 @@ export default function CitizensRequestsPage() {
                 const active = form.requester_type === t;
                 return (
                   <button key={t} type="button" onClick={() => handleRequesterTypeChange(t)}
-                    className={`flex-1 flex flex-col items-center gap-1.5 rounded-2xl border py-4 text-sm font-semibold transition-all ${active ? "bg-teal-50 border-teal-400 text-teal-700 ring-2 ring-teal-500/20" : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"}`}>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${active ? "bg-teal-100 text-teal-700" : "bg-gray-100 text-gray-500"}`}>{tag}</span>
+                    className={`flex-1 flex flex-col items-center gap-1.5 rounded-2xl border py-4 text-sm font-semibold transition-all ${active ? "bg-blue-50 border-blue-400 text-blue-700 ring-2 ring-blue-500/20" : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"}`}>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${active ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}>{tag}</span>
                     {label}
                   </button>
                 );
@@ -279,7 +279,7 @@ export default function CitizensRequestsPage() {
 
           <button type="submit" disabled={submitting}
             className="w-full py-3 rounded-2xl text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-            style={{ background: "linear-gradient(135deg, #0D9488, #14B8A6)" }}>
+            style={{ background: "linear-gradient(135deg, #1D4ED8, #3B82F6)" }}>
             {submitting ? "Submitting..." : "Submit Request"}
           </button>
         </form>
