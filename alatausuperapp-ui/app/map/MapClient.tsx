@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import DeckGL from "@deck.gl/react";
-import { ScatterplotLayer, HeatmapLayer } from "deck.gl";
+import { ScatterplotLayer, HeatmapLayer, PathLayer } from "deck.gl";
 import Map from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useToast } from "../components/Toast";
@@ -46,6 +46,13 @@ interface NotificationItem {
   body?: string;
   lat?: number;
   lon?: number;
+  geometry?: string;
+}
+
+interface RoadItem {
+  id: string;
+  title: string;
+  path: [number, number][];
 }
 
 const STATUS_FILL: Record<string, [number, number, number, number]> = {
@@ -54,8 +61,8 @@ const STATUS_FILL: Record<string, [number, number, number, number]> = {
   completed: [113, 113, 122, 160],
 };
 
-type LayerKey = "projects" | "aqi" | "traffic" | "danger";
-type EventType = "project" | "JAM" | "DANGER";
+type LayerKey = "projects" | "aqi" | "traffic" | "danger" | "roads";
+type EventType = "project" | "JAM" | "DANGER" | "ROAD";
 
 interface TooltipData {
   x: number;
@@ -76,6 +83,7 @@ const EVENT_OPTIONS: {
   { value: "project", label: "Project", color: "bg-brand-mid" },
   { value: "JAM", label: "Traffic Jam", color: "bg-amber-500" },
   { value: "DANGER", label: "Danger Zone", color: "bg-red-500" },
+  { value: "ROAD", label: "Road Work", color: "bg-orange-500" },
 ];
 
 export default function MapClient() {
@@ -83,6 +91,7 @@ export default function MapClient() {
   const [sensors, setSensors] = useState<Sensor[]>([]);
   const [jams, setJams] = useState<NotificationItem[]>([]);
   const [dangers, setDangers] = useState<NotificationItem[]>([]);
+  const [roads, setRoads] = useState<RoadItem[]>([]);
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -92,10 +101,12 @@ export default function MapClient() {
     aqi: true,
     traffic: true,
     danger: true,
+    roads: true,
   });
 
   const [clickedPoint, setClickedPoint] = useState<ClickedPoint | null>(null);
   const [eventType, setEventType] = useState<EventType>("project");
+  const [roadPath, setRoadPath] = useState<[number, number][]>([]);
   const [formTitle, setFormTitle] = useState("");
   const [formDesc, setFormDesc] = useState("");
   const [formInstitution, setFormInstitution] = useState("");
@@ -104,11 +115,12 @@ export default function MapClient() {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(async () => {
-    const [projRes, sensorRes, jamRes, dangerRes] = await Promise.allSettled([
+    const [projRes, sensorRes, jamRes, dangerRes, roadRes] = await Promise.allSettled([
       fetch(`${API}/projects`),
       fetch(`${API}/sensors`),
       fetch(`${API}/notifications?type=JAM`),
       fetch(`${API}/notifications?type=DANGER`),
+      fetch(`${API}/notifications?type=ROAD`),
     ]);
     if (projRes.status === "fulfilled" && projRes.value.ok)
       setProjects(await projRes.value.json());
@@ -118,6 +130,18 @@ export default function MapClient() {
       setJams(await jamRes.value.json());
     if (dangerRes.status === "fulfilled" && dangerRes.value.ok)
       setDangers(await dangerRes.value.json());
+    if (roadRes.status === "fulfilled" && roadRes.value.ok) {
+      const rawRoads: NotificationItem[] = await roadRes.value.json();
+      setRoads(
+        rawRoads
+          .filter((r) => r.geometry)
+          .map((r) => ({
+            id: r.id,
+            title: r.title,
+            path: JSON.parse(r.geometry!) as [number, number][],
+          }))
+      );
+    }
   }, []);
 
   useEffect(() => {
@@ -131,24 +155,37 @@ export default function MapClient() {
   const handleMapClick = useCallback(
     (info: { coordinate?: number[]; object?: unknown }) => {
       if (info.object) return;
-      if (info.coordinate) {
-        setClickedPoint({ lon: info.coordinate[0], lat: info.coordinate[1] });
-        setFormTitle("");
-        setFormDesc("");
-        setFormInstitution("");
-        setFormStatus("active");
-        setEventType("project");
+      if (!info.coordinate) return;
+      const [lon, lat] = info.coordinate;
+
+      // In ROAD mode with the panel open: append waypoints
+      if (clickedPoint && eventType === "ROAD") {
+        setRoadPath((prev) => [...prev, [lon, lat]]);
+        return;
       }
+
+      // Open creator panel
+      setClickedPoint({ lon, lat });
+      setRoadPath([[lon, lat]]);
+      setFormTitle("");
+      setFormDesc("");
+      setFormInstitution("");
+      setFormStatus("active");
     },
-    []
+    [clickedPoint, eventType]
   );
 
   const closeCreator = useCallback(() => {
     setClickedPoint(null);
+    setRoadPath([]);
   }, []);
 
   const handleCreate = useCallback(async () => {
     if (!clickedPoint || !formTitle.trim()) return;
+    if (eventType === "ROAD" && roadPath.length < 2) {
+      toast("Add at least 2 waypoints on the map for a road segment", "error");
+      return;
+    }
     setSubmitting(true);
     try {
       const label = EVENT_OPTIONS.find((o) => o.value === eventType)?.label ?? "Event";
@@ -175,10 +212,12 @@ export default function MapClient() {
             body: formDesc || undefined,
             lat: clickedPoint.lat,
             lon: clickedPoint.lon,
+            geometry: eventType === "ROAD" ? JSON.stringify(roadPath) : undefined,
           }),
         });
       }
       setClickedPoint(null);
+      setRoadPath([]);
       toast(`${label} "${formTitle}" created`, "success");
       fetchData();
     } catch {
@@ -186,7 +225,7 @@ export default function MapClient() {
     } finally {
       setSubmitting(false);
     }
-  }, [clickedPoint, eventType, formTitle, formDesc, formInstitution, formStatus, fetchData, toast]);
+  }, [clickedPoint, eventType, formTitle, formDesc, formInstitution, formStatus, roadPath, fetchData, toast]);
 
   const handleDeleteProject = useCallback(
     async (obj: Project) => {
@@ -205,16 +244,16 @@ export default function MapClient() {
   );
 
   const handleDeleteNotification = useCallback(
-    async (obj: NotificationItem, type: "traffic" | "danger") => {
+    async (obj: NotificationItem, type: "traffic" | "danger" | "road") => {
       const confirmed = await confirm({
-        title: type === "danger" ? "Delete Danger Alert" : "Delete Traffic Report",
+        title: type === "danger" ? "Delete Danger Alert" : type === "road" ? "Delete Road Work" : "Delete Traffic Report",
         message: `Delete "${obj.title}"? This action cannot be undone.`,
         confirmLabel: "Delete",
         variant: type === "danger" ? "danger" : "warning",
       });
       if (!confirmed) return;
       await fetch(`${API}/notifications/${obj.id}`, { method: "DELETE" });
-      toast(`${type === "danger" ? "Danger alert" : "Traffic report"} deleted`, "success");
+      toast(`Deleted`, "success");
       fetchData();
     },
     [fetchData, toast, confirm]
@@ -249,6 +288,30 @@ export default function MapClient() {
     );
   }
 
+  // Existing road reconstructions
+  if (activeLayers.roads && roads.length > 0) {
+    layers.push(
+      new PathLayer({
+        id: "roads-path",
+        data: roads,
+        getPath: (d: RoadItem) => d.path,
+        getWidth: 6,
+        getColor: [249, 115, 22, 220] as [number, number, number, number], // orange-500
+        widthMinPixels: 4,
+        widthMaxPixels: 12,
+        capRounded: true,
+        jointRounded: true,
+        pickable: true,
+        onHover: ({ object, x, y }: { object?: RoadItem; x: number; y: number }) => {
+          setTooltip(object ? { x, y, text: `Road Work: ${object.title}` } : null);
+        },
+        onClick: ({ object }: { object?: RoadItem }) => {
+          if (object) handleDeleteNotification({ id: object.id, type: "ROAD", title: object.title }, "road");
+        },
+      })
+    );
+  }
+
   if (activeLayers.projects && geoProjects.length > 0) {
     layers.push(
       new ScatterplotLayer({
@@ -264,7 +327,7 @@ export default function MapClient() {
         radiusMinPixels: 6,
         radiusMaxPixels: 20,
         onHover: ({ object, x, y }: { object?: Project; x: number; y: number }) => {
-          setTooltip(object ? { x, y, text: `${object.title}\n${object.institution} \u00b7 ${object.status}` } : null);
+          setTooltip(object ? { x, y, text: `${object.title}\n${object.institution} · ${object.status}` } : null);
         },
         onClick: ({ object }: { object?: Project }) => {
           if (object) handleDeleteProject(object);
@@ -321,24 +384,47 @@ export default function MapClient() {
     );
   }
 
+  // Road path being drawn (preview)
+  if (clickedPoint && eventType === "ROAD" && roadPath.length >= 2) {
+    layers.push(
+      new PathLayer({
+        id: "road-preview",
+        data: [{ path: roadPath }],
+        getPath: (d: { path: [number, number][] }) => d.path,
+        getWidth: 6,
+        getColor: [249, 115, 22, 255] as [number, number, number, number],
+        widthMinPixels: 4,
+        capRounded: true,
+        jointRounded: true,
+        getDashArray: [6, 4],
+        dashJustified: true,
+        extensions: [],
+      })
+    );
+  }
+
+  // Clicked point marker
   if (clickedPoint) {
     const markerColor: Record<EventType, [number, number, number, number]> = {
       project: [15, 76, 117, 255],   // #0F4C75
       JAM: [245, 158, 11, 255],
       DANGER: [239, 68, 68, 255],
+      ROAD: [249, 115, 22, 255],
     };
     layers.push(
       new ScatterplotLayer({
         id: "clicked-marker",
-        data: [clickedPoint],
+        data: roadPath.length > 0
+          ? roadPath.map((p) => ({ lon: p[0], lat: p[1] }))
+          : [clickedPoint],
         getPosition: (d: ClickedPoint) => [d.lon, d.lat],
-        getRadius: 100,
+        getRadius: 60,
         getFillColor: markerColor[eventType],
         getLineColor: [255, 255, 255, 200],
         lineWidthMinPixels: 2,
         stroked: true,
-        radiusMinPixels: 10,
-        radiusMaxPixels: 24,
+        radiusMinPixels: 8,
+        radiusMaxPixels: 18,
       })
     );
   }
@@ -348,6 +434,7 @@ export default function MapClient() {
     { key: "aqi", label: "AQI Heatmap", color: "bg-blue-500", count: geoSensors.length },
     { key: "traffic", label: "Traffic Jams", color: "bg-amber-500", count: geoJams.length },
     { key: "danger", label: "Danger Zones", color: "bg-red-500", count: geoDangers.length },
+    { key: "roads", label: "Road Works", color: "bg-orange-500", count: roads.length },
   ];
 
   return (
@@ -378,6 +465,15 @@ export default function MapClient() {
         </div>
       )}
 
+      {/* Road path waypoint hint */}
+      {clickedPoint && eventType === "ROAD" && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-orange-50 border border-orange-200 rounded-xl px-5 py-2.5 shadow-lg">
+          <p className="text-orange-700 text-sm font-medium">
+            🚧 Click on the map to add waypoints — {roadPath.length} point{roadPath.length !== 1 ? "s" : ""} placed
+          </p>
+        </div>
+      )}
+
       {/* Creator Panel */}
       {clickedPoint && (
         <div
@@ -390,7 +486,7 @@ export default function MapClient() {
               onClick={closeCreator}
               className="text-gray-400 hover:text-gray-600 text-lg leading-none w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
             >
-              x
+              ×
             </button>
           </div>
 
@@ -403,7 +499,7 @@ export default function MapClient() {
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs text-gray-500 font-medium">Type</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {EVENT_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -421,6 +517,21 @@ export default function MapClient() {
               </div>
             </div>
 
+            {/* Road waypoint count indicator */}
+            {eventType === "ROAD" && (
+              <div className="flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-lg px-3 py-2">
+                <span className="text-lg">🚧</span>
+                <div>
+                  <p className="text-xs font-medium text-orange-800">
+                    {roadPath.length} waypoint{roadPath.length !== 1 ? "s" : ""} placed
+                  </p>
+                  <p className="text-xs text-orange-600">
+                    {roadPath.length < 2 ? "Click the map to add more" : "Click map to extend · ready to submit"}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-1.5">
               <label className="text-xs text-gray-500 font-medium">Title</label>
               <input
@@ -431,6 +542,8 @@ export default function MapClient() {
                     ? "e.g. New Park Construction"
                     : eventType === "JAM"
                     ? "e.g. A3 Highway Congestion"
+                    : eventType === "ROAD"
+                    ? "e.g. A3 Resurfacing Phase 2"
                     : "e.g. Gas Leak Alert"
                 }
                 className="px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-light/40 focus:border-brand-mid"
@@ -478,15 +591,17 @@ export default function MapClient() {
 
             <button
               onClick={handleCreate}
-              disabled={submitting || !formTitle.trim()}
-              className={`mt-1 w-full py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 text-white ${
+              disabled={submitting || !formTitle.trim() || (eventType === "ROAD" && roadPath.length < 2)}
+              className="mt-1 w-full py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 text-white"
+              style={
                 eventType === "JAM"
-                  ? "bg-amber-600 hover:bg-amber-700"
+                  ? { background: "#D97706" }
                   : eventType === "DANGER"
-                  ? "bg-red-600 hover:bg-red-700"
-                  : ""
-              }`}
-              style={eventType === "project" ? { background: "linear-gradient(135deg, #0F4C75 0%, #6A94F5 100%)" } : undefined}
+                  ? { background: "#DC2626" }
+                  : eventType === "ROAD"
+                  ? { background: "#EA580C" }
+                  : { background: "linear-gradient(135deg, #0F4C75 0%, #6A94F5 100%)" }
+              }
             >
               {submitting
                 ? "Creating..."
@@ -515,6 +630,10 @@ export default function MapClient() {
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-red-500" />
             <span className="text-gray-600 text-xs">Danger Zone</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-1.5 rounded-full bg-orange-500" />
+            <span className="text-gray-600 text-xs">Road Work</span>
           </div>
         </div>
         <div className="mt-3 pt-2 border-t border-gray-100">

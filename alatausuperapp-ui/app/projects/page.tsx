@@ -204,7 +204,7 @@ export default function ProjectsPage() {
                   <td className="px-5 py-3.5 text-right">
                     <button
                       onClick={() => handleDelete(project.id, project.title)}
-                      className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-50"
+                      className="text-red-400 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-100"
                       title="Delete"
                     >
                       <TrashIcon />

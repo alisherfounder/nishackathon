@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from sqlalchemy import text
 from database import SessionLocal, engine, Base
 from models.project import ProjectCard
 from models.notification import Notification
@@ -26,6 +27,13 @@ def _seed_if_empty():
 async def lifespan(app: FastAPI):
     # Create all tables
     Base.metadata.create_all(bind=engine)
+    # Migrate: add geometry column to notifications if missing
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE notifications ADD COLUMN geometry TEXT"))
+            conn.commit()
+        except Exception:
+            pass  # Column already exists
     # Seed if empty
     _seed_if_empty()
     yield

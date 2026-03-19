@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from database import SessionLocal
 from models.poll import Poll, PollOption
+from models.notification import Notification
 
 router = APIRouter()
 
@@ -83,6 +84,14 @@ def create_poll(payload: PollCreate, db: Session = Depends(get_db)):
     for opt in payload.options:
         poll.options.append(PollOption(text=opt.text))
     db.add(poll)
+    # Auto-notify citizens that a new poll is open
+    db.add(Notification(
+        type="POLL",
+        title=f"New poll: {payload.title}",
+        body=payload.description or "A new public poll is now open for your vote.",
+        lat=payload.lat,
+        lon=payload.lon,
+    ))
     db.commit()
     db.refresh(poll)
     return poll

@@ -14,13 +14,16 @@ interface NotificationItem {
   body?: string;
   lat?: number;
   lon?: number;
+  geometry?: string;
   created_at?: string;
 }
 
-const TYPE_CONFIG: Record<string, { color: string; bg: string; icon: string }> = {
-  DANGER: { color: "text-red-700", bg: "bg-red-50 border-red-200", icon: "\u26A0" },
-  JAM: { color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: "\u25CF" },
-  POLL: { color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: "\u2709" },
+const TYPE_CONFIG: Record<string, { color: string; bg: string; icon: string; label: string }> = {
+  DANGER: { color: "text-red-700",    bg: "bg-red-50 border-red-200",     icon: "⚠",  label: "DANGER" },
+  JAM:    { color: "text-amber-700",  bg: "bg-amber-50 border-amber-200", icon: "●",  label: "TRAFFIC" },
+  POLL:   { color: "text-blue-700",   bg: "bg-blue-50 border-blue-200",   icon: "✉",  label: "POLL" },
+  ROAD:   { color: "text-orange-700", bg: "bg-orange-50 border-orange-200", icon: "🚧", label: "ROAD WORK" },
+  INFO:   { color: "text-brand",      bg: "bg-brand-light/10 border-brand-light", icon: "ℹ", label: "INFO" },
 };
 
 export default function NotificationsPage() {
@@ -33,13 +36,7 @@ export default function NotificationsPage() {
     try {
       const res = await fetch(`${API}/notifications`);
       if (res.ok) {
-        const data: NotificationItem[] = await res.json();
-        data.sort(
-          (a, b) =>
-            new Date(b.created_at ?? 0).getTime() -
-            new Date(a.created_at ?? 0).getTime()
-        );
-        setNotifications(data);
+        setNotifications(await res.json());
       }
     } catch {
       // API may be down
@@ -54,8 +51,14 @@ export default function NotificationsPage() {
 
   async function handleDelete(id: string, title: string, type: string) {
     const variant = type === "DANGER" ? "danger" : type === "JAM" ? "warning" : "default";
+    const typeLabel =
+      type === "DANGER" ? "Danger Alert"
+      : type === "JAM" ? "Traffic Report"
+      : type === "ROAD" ? "Road Work"
+      : type === "INFO" ? "Notification"
+      : "Notification";
     const confirmed = await confirm({
-      title: `Delete ${type === "DANGER" ? "Danger Alert" : type === "JAM" ? "Traffic Report" : "Notification"}`,
+      title: `Delete ${typeLabel}`,
       message: `Are you sure you want to delete "${title}"? This action cannot be undone.`,
       confirmLabel: "Delete",
       variant: variant as "danger" | "warning" | "default",
@@ -90,7 +93,12 @@ export default function NotificationsPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {notifications.map((notif) => {
-            const config = TYPE_CONFIG[notif.type] ?? TYPE_CONFIG.POLL;
+            const config = TYPE_CONFIG[notif.type] ?? TYPE_CONFIG.INFO;
+            // Parse road geometry for waypoint count
+            let waypointCount = 0;
+            if (notif.type === "ROAD" && notif.geometry) {
+              try { waypointCount = (JSON.parse(notif.geometry) as unknown[]).length; } catch { /* ignore */ }
+            }
             return (
               <div
                 key={notif.id}
@@ -98,15 +106,20 @@ export default function NotificationsPage() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3 min-w-0">
-                    <span className="text-lg mt-0.5">{config.icon}</span>
+                    <span className="text-lg mt-0.5 select-none">{config.icon}</span>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className={`text-xs font-semibold uppercase tracking-wider ${config.color}`}>
-                          {notif.type}
+                          {config.label}
                         </span>
                         {notif.lat != null && notif.lon != null && (
                           <span className="text-xs text-gray-400 font-mono">
                             {notif.lat.toFixed(3)}, {notif.lon.toFixed(3)}
+                          </span>
+                        )}
+                        {notif.type === "ROAD" && waypointCount > 0 && (
+                          <span className="text-xs text-orange-600 font-medium">
+                            {waypointCount} waypoints
                           </span>
                         )}
                       </div>
@@ -122,7 +135,7 @@ export default function NotificationsPage() {
                     </span>
                     <button
                       onClick={() => handleDelete(notif.id, notif.title, notif.type)}
-                      className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-50"
+                      className="text-red-400 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-100"
                       title="Delete"
                     >
                       <TrashIcon />

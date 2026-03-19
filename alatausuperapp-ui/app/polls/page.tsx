@@ -124,7 +124,7 @@ export default function PollsPage() {
                     </div>
                     <button
                       onClick={() => handleDelete(poll.id, poll.title)}
-                      className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-50 shrink-0"
+                      className="text-red-400 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-100 shrink-0"
                       title="Delete"
                     >
                       <TrashIcon />

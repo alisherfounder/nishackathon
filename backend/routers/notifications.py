@@ -14,11 +14,12 @@ router = APIRouter()
 # --------------- Pydantic schemas ---------------
 
 class NotificationCreate(BaseModel):
-    type: str  # POLL | DANGER | JAM
+    type: str  # POLL | DANGER | JAM | ROAD | INFO
     title: str
     body: Optional[str] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
+    geometry: Optional[str] = None  # JSON [[lon, lat], ...]
 
 
 class NotificationOut(BaseModel):
@@ -28,6 +29,7 @@ class NotificationOut(BaseModel):
     body: Optional[str] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
+    geometry: Optional[str] = None
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
@@ -50,7 +52,7 @@ def list_notifications(type: Optional[str] = None, db: Session = Depends(get_db)
     query = db.query(Notification)
     if type:
         query = query.filter(Notification.type == type)
-    return query.all()
+    return query.order_by(Notification.created_at.desc()).all()
 
 
 @router.post("/", response_model=NotificationOut, status_code=201)

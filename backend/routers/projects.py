@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from database import SessionLocal
 from models.project import ProjectCard
+from models.notification import Notification
 
 router = APIRouter()
 
@@ -69,6 +70,14 @@ def list_projects(status: Optional[str] = None, db: Session = Depends(get_db)):
 def create_project(payload: ProjectCreate, db: Session = Depends(get_db)):
     project = ProjectCard(**payload.model_dump())
     db.add(project)
+    # Auto-notify citizens about the new project
+    db.add(Notification(
+        type="INFO",
+        title=f"New project announced: {payload.title}",
+        body=payload.description or f"A new {payload.status} project by {payload.institution} has been registered.",
+        lat=payload.lat,
+        lon=payload.lon,
+    ))
     db.commit()
     db.refresh(project)
     return project
