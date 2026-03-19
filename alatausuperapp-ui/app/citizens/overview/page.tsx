@@ -1,117 +1,182 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 const API = "http://localhost:8000";
 
-interface Sensor {
-  id: string; name?: string; aqi: number; pm25?: number; lat?: number; lon?: number; recorded_at?: string;
+interface Notification {
+  id: string;
+  title: string;
+  message?: string;
+  type?: string;
+  created_at?: string;
 }
 
-function aqiLabel(aqi: number) {
-  if (aqi <= 50) return { label: "Good", color: "text-green-600", bg: "bg-green-50", bar: "bg-green-500" };
-  if (aqi <= 100) return { label: "Moderate", color: "text-yellow-600", bg: "bg-yellow-50", bar: "bg-yellow-500" };
-  if (aqi <= 150) return { label: "Unhealthy for Sensitive Groups", color: "text-orange-600", bg: "bg-orange-50", bar: "bg-orange-500" };
-  if (aqi <= 200) return { label: "Unhealthy", color: "text-red-600", bg: "bg-red-50", bar: "bg-red-500" };
-  if (aqi <= 300) return { label: "Very Unhealthy", color: "text-purple-600", bg: "bg-purple-50", bar: "bg-purple-500" };
-  return { label: "Hazardous", color: "text-rose-800", bg: "bg-rose-100", bar: "bg-rose-700" };
+interface Project {
+  id: string;
+  name: string;
+  type?: string;
+  image_url?: string;
+  completion_pct?: number;
+  status?: string;
 }
 
-function LeafIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z" /><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" /></svg>;
+const TYPE_GRADIENT: Record<string, string> = {
+  road:         "linear-gradient(135deg, #1e3a5f 0%, #2d6a9f 100%)",
+  park:         "linear-gradient(135deg, #14532d 0%, #16a34a 100%)",
+  building:     "linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%)",
+  utility:      "linear-gradient(135deg, #78350f 0%, #d97706 100%)",
+  infrastructure:"linear-gradient(135deg, #134e4a 0%, #0d9488 100%)",
+  default:      "linear-gradient(135deg, #1e3a5f 0%, #3b82f6 100%)",
+};
+
+function gradientFor(type?: string) {
+  return TYPE_GRADIENT[type ?? ""] ?? TYPE_GRADIENT.default;
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
 }
 
 export default function CitizensOverviewPage() {
-  const [sensors, setSensors] = useState<Sensor[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [carouselIdx, setCarouselIdx] = useState(0);
 
   useEffect(() => {
-    fetch(`${API}/sensors`)
-      .then((r) => r.ok ? r.json() : [])
-      .then(setSensors)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.allSettled([
+      fetch(`${API}/notifications`),
+      fetch(`${API}/projects`),
+    ]).then(([notifRes, projRes]) => {
+      if (notifRes.status === "fulfilled" && notifRes.value.ok)
+        notifRes.value.json().then((d: Notification[]) => setNotifications(d.slice(0, 5)));
+      if (projRes.status === "fulfilled" && projRes.value.ok)
+        projRes.value.json().then((d: Project[]) => setProjects(d));
+    });
   }, []);
 
-  const avgAqi = sensors.length > 0 ? Math.round(sensors.reduce((s, x) => s + x.aqi, 0) / sensors.length) : 0;
-  const avgPm25 = sensors.length > 0 ? (sensors.reduce((s, x) => s + (x.pm25 ?? 0), 0) / sensors.length).toFixed(1) : "—";
-  const avgInfo = aqiLabel(avgAqi);
+  const featured = notifications[0];
+  const gridProjects = projects.slice(0, 4);
+  const sponsoredProjects = projects.slice(4, 8);
 
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-64"><div className="text-gray-400 text-sm">Loading...</div></div>;
+  function handleCarouselScroll() {
+    if (!carouselRef.current) return;
+    const el = carouselRef.current;
+    const cardW = el.scrollWidth / Math.max(sponsoredProjects.length, 1);
+    setCarouselIdx(Math.round(el.scrollLeft / cardW));
   }
 
   return (
-    <div className="p-4 max-w-lg mx-auto">
-      <div className="mb-4">
-        <h1 className="text-lg font-bold text-gray-900">Air Quality</h1>
-        <p className="text-xs text-gray-400 mt-0.5">Live readings from {sensors.length} sensors across Alatau</p>
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      {/* Sub-header: district selector */}
+      <div className="flex items-center justify-center py-3 bg-white border-b border-gray-100">
+        <button className="flex items-center gap-1.5 rounded-full px-5 py-1.5 text-sm font-semibold text-white gap-2"
+          style={{ background: "linear-gradient(135deg, #3b82f6, #1d4ed8)" }}>
+          Alatau
+          <ChevronDownIcon />
+        </button>
       </div>
 
-      {/* City average card */}
-      <div className={`rounded-2xl border p-6 mb-5 ${avgInfo.bg}`}>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">City Average AQI</span>
-          <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${avgInfo.bg}`} style={{ color: "inherit" }}>
-            <LeafIcon />
-          </div>
-        </div>
-        <p className={`text-5xl font-bold mb-1 ${avgInfo.color}`}>{avgAqi}</p>
-        <p className={`text-sm font-semibold ${avgInfo.color}`}>{avgInfo.label}</p>
-        <div className="mt-4 h-2 bg-white/60 rounded-full overflow-hidden">
-          <div className={`h-full rounded-full ${avgInfo.bar}`} style={{ width: `${Math.min((avgAqi / 300) * 100, 100)}%` }} />
-        </div>
-        <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-          <span>PM2.5: {avgPm25} µg/m³</span>
-          <span>{sensors.length} stations</span>
-        </div>
-      </div>
+      <div className="flex flex-col gap-5 p-4 pb-6">
 
-      {/* AQI scale */}
-      <div className="rounded-2xl bg-white border border-gray-100 p-4 mb-5 shadow-sm">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">AQI Scale</p>
-        <div className="flex flex-col gap-2">
-          {[
-            { range: "0–50", label: "Good", color: "bg-green-500" },
-            { range: "51–100", label: "Moderate", color: "bg-yellow-500" },
-            { range: "101–150", label: "Unhealthy for Sensitive Groups", color: "bg-orange-500" },
-            { range: "151–200", label: "Unhealthy", color: "bg-red-500" },
-            { range: "201–300", label: "Very Unhealthy", color: "bg-purple-500" },
-          ].map((row) => (
-            <div key={row.range} className="flex items-center gap-3">
-              <div className={`h-3 w-3 rounded-full shrink-0 ${row.color}`} />
-              <span className="text-xs text-gray-600 flex-1">{row.label}</span>
-              <span className="text-xs text-gray-400 font-mono">{row.range}</span>
+        {/* Last Notifications banner */}
+        <Link href="/citizens/notifications" className="block">
+          <div className="rounded-3xl overflow-hidden shadow-sm" style={{ background: "linear-gradient(135deg, #93b4d4 0%, #b8cfe8 100%)", minHeight: 160 }}>
+            <div className="flex flex-col items-center justify-center h-full min-h-[160px] px-6 py-8 text-center">
+              {featured ? (
+                <>
+                  <p className="text-2xl font-extrabold text-white leading-tight drop-shadow">{featured.title}</p>
+                  {featured.message && (
+                    <p className="text-sm text-white/80 mt-2 line-clamp-2">{featured.message}</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-3xl font-extrabold text-white leading-tight drop-shadow">Last<br />notifications</p>
+              )}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        </Link>
 
-      {/* Sensor list */}
-      <div>
-        <p className="text-sm font-semibold text-gray-900 mb-3">Sensor Stations</p>
-        <div className="flex flex-col gap-3">
-          {sensors.map((sensor) => {
-            const info = aqiLabel(sensor.aqi);
-            return (
-              <div key={sensor.id} className="rounded-2xl bg-white border border-gray-100 p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-semibold text-gray-900">{sensor.name ?? "Sensor"}</p>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${info.bg} ${info.color}`}>{info.label}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <p className={`text-2xl font-bold ${info.color}`}>{sensor.aqi}</p>
-                  <div className="flex-1">
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${info.bar}`} style={{ width: `${Math.min((sensor.aqi / 300) * 100, 100)}%` }} />
+        {/* You might be interested in */}
+        {gridProjects.length > 0 && (
+          <div>
+            <p className="text-sm font-semibold text-gray-700 mb-3">You might be interested in</p>
+            <div className="grid grid-cols-2 gap-3">
+              {gridProjects.map((p) => {
+                const imgSrc = p.image_url
+                  ? (p.image_url.startsWith("http") ? p.image_url : `${API}${p.image_url}`)
+                  : null;
+                return (
+                  <div key={p.id} className="rounded-2xl overflow-hidden shadow-sm aspect-[4/3] relative">
+                    {imgSrc ? (
+                      <img src={imgSrc} alt={p.name} className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0" style={{ background: gradientFor(p.type) }} />
+                    )}
+                    <div className="absolute inset-0 bg-black/20" />
+                    <div className="absolute bottom-0 left-0 right-0 px-3 py-2.5">
+                      <p className="text-sm font-bold text-white leading-tight line-clamp-2">{p.name}</p>
                     </div>
-                    {sensor.pm25 != null && <p className="text-xs text-gray-400 mt-1">PM2.5: {sensor.pm25} µg/m³</p>}
                   </div>
-                </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Sponsored */}
+        {sponsoredProjects.length > 0 && (
+          <div>
+            <p className="text-sm font-semibold text-gray-700 mb-3">Sponsored</p>
+            <div
+              ref={carouselRef}
+              onScroll={handleCarouselScroll}
+              className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory"
+              style={{ scrollbarWidth: "none" }}
+            >
+              {sponsoredProjects.map((p) => {
+                const imgSrc = p.image_url
+                  ? (p.image_url.startsWith("http") ? p.image_url : `${API}${p.image_url}`)
+                  : null;
+                return (
+                  <div key={p.id} className="snap-start shrink-0 w-[65vw] max-w-[260px] rounded-2xl overflow-hidden shadow-sm aspect-[4/3] relative">
+                    {imgSrc ? (
+                      <img src={imgSrc} alt={p.name} className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0" style={{ background: gradientFor(p.type) }} />
+                    )}
+                    <div className="absolute inset-0 bg-black/20" />
+                    <div className="absolute bottom-0 left-0 right-0 px-3 py-2.5">
+                      <p className="text-sm font-bold text-white leading-tight line-clamp-2">{p.name}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Carousel dots */}
+            {sponsoredProjects.length > 1 && (
+              <div className="flex items-center justify-center gap-1.5 mt-2">
+                {sponsoredProjects.map((_, i) => (
+                  <span key={i} className={`rounded-full transition-all ${i === carouselIdx ? "w-4 h-1.5 bg-teal-500" : "w-1.5 h-1.5 bg-gray-300"}`} />
+                ))}
               </div>
-            );
-          })}
-        </div>
+            )}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {projects.length === 0 && notifications.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <p className="text-gray-400 text-sm">No content yet.</p>
+          </div>
+        )}
+
       </div>
     </div>
   );
