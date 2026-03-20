@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Alatau SuperApp",
+    "slug": "alatausuperapp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "city.alatau.superapp"
+    },
+    "android": {
+      "package": "city.alatau.superapp",
+      "adaptiveIcon": {
+        "backgroundColor": "#1D4ED8"
+      },
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+        }
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Alatau SuperApp to access your location for the city map."
+        }
+      ]
+    ],
+    "scheme": "alatausuperapp",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
