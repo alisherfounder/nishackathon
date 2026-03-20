@@ -72,6 +72,17 @@ function AlertTriangleIcon({ className }: { className?: string }) {
   );
 }
 
+function ChartBarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6"  y1="20" x2="6"  y2="14" />
+      <line x1="2"  y1="20" x2="22" y2="20" />
+    </svg>
+  );
+}
+
 function SettingsIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -107,6 +118,7 @@ const NAV_ITEMS = [
   { href: "/government",               label: "Home",          Icon: HomeIcon,           badgeKey: null       },
   { href: "/government/projects",      label: "Projects",      Icon: FolderIcon,         badgeKey: null       },
   { href: "/government/map",           label: "Map",           Icon: MapIcon,            badgeKey: null       },
+  { href: "/government/analytics",     label: "Analytics",     Icon: ChartBarIcon,       badgeKey: null       },
   { href: "/government/requests",      label: "Requests",      Icon: ClipboardIcon,      badgeKey: "requests" },
   { href: "/government/reports",       label: "Reports",       Icon: AlertTriangleIcon,  badgeKey: "reports"  },
   { href: "/government/notifications", label: "Notifications", Icon: BellIcon,           badgeKey: "notif"    },
